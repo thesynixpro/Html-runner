@@ -282,7 +282,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         statusMessage = null
     }
 
-    fun setSearchVisible(visible: Boolean) {
+    fun showSearch(visible: Boolean) {
         searchVisible = visible
         if (!visible) {
             searchQuery = ""
@@ -291,13 +291,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun setSearchQuery(query: String) {
+    fun updateSearchQuery(query: String) {
         searchQuery = query
         currentMatch = 0
         jumpToMatch(0)
     }
 
-    fun setReplaceText(text: String) {
+    fun updateReplaceText(text: String) {
         replaceText = text
     }
 

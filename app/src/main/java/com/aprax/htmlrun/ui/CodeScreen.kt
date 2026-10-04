@@ -62,7 +62,7 @@ fun CodeScreen(
             fileName = viewModel.openFile?.name,
             dirty = viewModel.isDirty,
             onBack = viewModel::closeFile,
-            onSearch = { viewModel.setSearchVisible(true) },
+            onSearch = { viewModel.showSearch(true) },
             onSave = viewModel::saveNow,
             onRun = onOpenPreview,
         )
@@ -228,7 +228,7 @@ private fun SearchPanel(viewModel: AppViewModel) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
                 value = viewModel.searchQuery,
-                onValueChange = viewModel::setSearchQuery,
+                onValueChange = viewModel::updateSearchQuery,
                 label = { Text("Find") },
                 singleLine = true,
                 modifier = Modifier.weight(1f),
@@ -252,7 +252,7 @@ private fun SearchPanel(viewModel: AppViewModel) {
             TextButtonChip("Previous", onClick = viewModel::previousMatch)
             Spacer(Modifier.width(10.dp))
             IconButton(
-                onClick = { viewModel.setSearchVisible(false) },
+                onClick = { viewModel.showSearch(false) },
                 colors = IconButtonDefaults.iconButtonColors(),
             ) {
                 Icon(Icons.Rounded.Close, contentDescription = "Close search")
@@ -264,7 +264,7 @@ private fun SearchPanel(viewModel: AppViewModel) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
                 value = viewModel.replaceText,
-                onValueChange = viewModel::setReplaceText,
+                onValueChange = viewModel::updateReplaceText,
                 label = { Text("Replace with") },
                 singleLine = true,
                 modifier = Modifier.weight(1f),
