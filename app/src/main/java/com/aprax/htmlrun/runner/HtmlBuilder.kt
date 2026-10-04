@@ -1,4 +1,4 @@
-package com.openprojects.htmlrunner.runner
+package com.aprax.htmlrun.runner
 
 /**
  * Builds the document that is shown in the preview WebView.

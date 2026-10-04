@@ -1,4 +1,4 @@
-package com.openprojects.htmlrunner.editor
+package com.aprax.htmlrun.editor
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box

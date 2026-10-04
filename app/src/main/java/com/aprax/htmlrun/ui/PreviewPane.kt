@@ -1,4 +1,4 @@
-package com.openprojects.htmlrunner.ui
+package com.aprax.htmlrun.ui
 
 import android.annotation.SuppressLint
 import android.graphics.Color as AndroidColor
@@ -15,7 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
-import com.openprojects.htmlrunner.runner.JsBridge
+import com.aprax.htmlrun.runner.JsBridge
 
 private val PreviewBackground = Color(0xFFFFFFFF)
 

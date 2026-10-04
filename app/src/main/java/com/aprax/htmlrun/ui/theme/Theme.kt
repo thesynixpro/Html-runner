@@ -1,4 +1,4 @@
-package com.openprojects.htmlrunner.ui.theme
+package com.aprax.htmlrun.ui.theme
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography

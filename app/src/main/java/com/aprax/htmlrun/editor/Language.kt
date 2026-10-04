@@ -1,4 +1,4 @@
-package com.openprojects.htmlrunner.editor
+package com.aprax.htmlrun.editor
 
 enum class Language {
     HTML,

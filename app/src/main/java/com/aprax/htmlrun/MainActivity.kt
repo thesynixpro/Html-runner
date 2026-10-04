@@ -1,13 +1,13 @@
-package com.openprojects.htmlrunner
+package com.aprax.htmlrun
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import com.openprojects.htmlrunner.runner.RunnerViewModel
-import com.openprojects.htmlrunner.ui.RunnerScreen
-import com.openprojects.htmlrunner.ui.theme.HtmlRunnerTheme
+import com.aprax.htmlrun.runner.RunnerViewModel
+import com.aprax.htmlrun.ui.RunnerScreen
+import com.aprax.htmlrun.ui.theme.HtmlRunnerTheme
 
 class MainActivity : ComponentActivity() {
 

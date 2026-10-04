@@ -1,4 +1,4 @@
-package com.openprojects.htmlrunner.runner
+package com.aprax.htmlrun.runner
 
 enum class FileTab(val title: String, val fileName: String) {
     HTML("HTML", "index.html"),

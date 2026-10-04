@@ -1,4 +1,4 @@
-package com.openprojects.htmlrunner.runner
+package com.aprax.htmlrun.runner
 
 import android.webkit.JavascriptInterface
 

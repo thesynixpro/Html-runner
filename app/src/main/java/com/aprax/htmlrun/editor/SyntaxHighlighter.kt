@@ -1,4 +1,4 @@
-package com.openprojects.htmlrunner.editor
+package com.aprax.htmlrun.editor
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString

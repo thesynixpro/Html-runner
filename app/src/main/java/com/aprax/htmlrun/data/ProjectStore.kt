@@ -1,7 +1,7 @@
-package com.openprojects.htmlrunner.data
+package com.aprax.htmlrun.data
 
 import android.content.Context
-import com.openprojects.htmlrunner.runner.FileTab
+import com.aprax.htmlrun.runner.FileTab
 
 class ProjectStore(context: Context) {
 

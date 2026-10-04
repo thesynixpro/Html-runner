@@ -1,6 +1,8 @@
-package com.openprojects.htmlrunner.ui
+package com.aprax.htmlrun.ui
 
 import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
@@ -61,10 +64,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.openprojects.htmlrunner.editor.CodeEditor
-import com.openprojects.htmlrunner.runner.ConsoleEntry
-import com.openprojects.htmlrunner.runner.FileTab
-import com.openprojects.htmlrunner.runner.RunnerViewModel
+import com.aprax.htmlrun.editor.CodeEditor
+import com.aprax.htmlrun.runner.ConsoleEntry
+import com.aprax.htmlrun.runner.FileTab
+import com.aprax.htmlrun.runner.ProjectFiles
+import com.aprax.htmlrun.runner.RunnerViewModel
 import kotlinx.coroutines.delay
 
 private val ScreenBackground = Color(0xFF0F1115)
@@ -89,6 +93,21 @@ fun RunnerScreen(viewModel: RunnerViewModel = viewModel()) {
     var consoleVisible by rememberSaveable { mutableStateOf(true) }
     var menuOpen by remember { mutableStateOf(false) }
     var resetDialogVisible by remember { mutableStateOf(false) }
+
+    val openProjectLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            consoleVisible = true
+            ProjectFiles.read(context, uri)
+                .onSuccess { project ->
+                    viewModel.openProject(project)
+                }
+                .onFailure { throwable ->
+                    viewModel.appendConsoleEntry("error", throwable.message ?: "Could not open the selected file")
+                }
+        }
+    }
 
     LaunchedEffect(viewModel.autoRun, viewModel.html, viewModel.css, viewModel.js) {
         if (viewModel.autoRun) {
@@ -169,6 +188,10 @@ fun RunnerScreen(viewModel: RunnerViewModel = viewModel()) {
         OverflowMenu(
             autoRun = viewModel.autoRun,
             onToggleAutoRun = viewModel::toggleAutoRun,
+            onOpenProject = {
+                menuOpen = false
+                openProjectLauncher.launch(ProjectFiles.mimeTypes)
+            },
             onExport = {
                 menuOpen = false
                 exportDocument(context, viewModel.previewDocument)
@@ -479,6 +502,7 @@ private fun StatusBar(
 private fun OverflowMenu(
     autoRun: Boolean,
     onToggleAutoRun: () -> Unit,
+    onOpenProject: () -> Unit,
     onExport: () -> Unit,
     onClearConsole: () -> Unit,
     onClearFile: () -> Unit,
@@ -508,6 +532,7 @@ private fun OverflowMenu(
                     )
                 },
             )
+            MenuRow(Icons.Rounded.FolderOpen, "Open project file", onOpenProject)
             MenuRow(Icons.Rounded.Share, "Export HTML", onExport)
             MenuRow(Icons.Rounded.Delete, "Clear console", onClearConsole)
             MenuRow(Icons.Rounded.Delete, "Clear this file", onClearFile)

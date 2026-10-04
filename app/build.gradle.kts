@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.openprojects.htmlrunner"
+    namespace = "com.aprax.htmlrun"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.openprojects.htmlrunner"
+        applicationId = "com.aprax.htmlrun"
         minSdk = 26
         targetSdk = 36
         versionCode = 1

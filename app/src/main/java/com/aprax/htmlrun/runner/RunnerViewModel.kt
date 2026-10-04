@@ -1,4 +1,4 @@
-package com.openprojects.htmlrunner.runner
+package com.aprax.htmlrun.runner
 
 import android.app.Application
 import android.os.Handler
@@ -9,8 +9,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.AndroidViewModel
-import com.openprojects.htmlrunner.data.ProjectStore
-import com.openprojects.htmlrunner.editor.Language
+import com.aprax.htmlrun.data.ProjectStore
+import com.aprax.htmlrun.editor.Language
 
 data class ConsoleEntry(val level: String, val text: String)
 
@@ -117,6 +117,20 @@ class RunnerViewModel(application: Application) : AndroidViewModel(application) 
             FileTab.JS to TextFieldValue(Templates.js),
         )
         run()
+    }
+
+    /** Replaces the whole project with the contents of a file chosen by the user. */
+    fun openProject(project: ProjectFile) {
+        html = project.html
+        css = project.css
+        js = project.js
+        editorValues = mapOf(
+            FileTab.HTML to TextFieldValue(project.html),
+            FileTab.CSS to TextFieldValue(project.css),
+            FileTab.JS to TextFieldValue(project.js),
+        )
+        run()
+        appendConsoleEntry("info", "Opened project file: ${project.name}")
     }
 
     fun persist() {
