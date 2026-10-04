@@ -58,8 +58,9 @@ jobs:
       - name: Verify Gradle version
         run: |
           set -euo pipefail
-          gradle --version
-          gradle_version="$(gradle --version | awk -F': ' '/^Gradle / {print $2; exit}')"
+          version_output="$(gradle --version)"
+          printf '%s\n' "${version_output}"
+          gradle_version="$(printf '%s\n' "${version_output}" | awk '/^Gradle [0-9]/ {print $2; exit}')"
           echo "Active Gradle version: ${gradle_version}"
           if [ "${gradle_version}" != "${GRADLE_VERSION}" ]; then
             echo "::error::Gradle ${GRADLE_VERSION} is required but Gradle ${gradle_version} is active."
