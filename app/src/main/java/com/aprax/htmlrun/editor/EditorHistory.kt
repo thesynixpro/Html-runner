@@ -1,6 +1,6 @@
 package com.aprax.htmlrun.editor
 
-import androidx.compose.ui.text.TextFieldValue
+import androidx.compose.ui.text.input.TextFieldValue
 
 private const val COALESCE_WINDOW_MS = 600L
 private const val LIMIT = 250

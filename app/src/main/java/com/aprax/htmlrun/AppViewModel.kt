@@ -5,7 +5,7 @@ import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.text.TextFieldValue
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.TextRange
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -331,11 +331,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val builder = StringBuilder(text.length)
         var cursor = 0
         for (range in matches) {
-            builder.append(text, cursor, range.first)
+            builder.appendRange(text, cursor, range.first)
             builder.append(replaceText)
             cursor = range.last + 1
         }
-        builder.append(text, cursor, text.length)
+        builder.appendRange(text, cursor, text.length)
         val updated = builder.toString()
         onEdit(TextFieldValue(updated, TextRange(updated.length)))
         statusMessage = "Replaced ${matches.size} match(es)"

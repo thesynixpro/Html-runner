@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -41,7 +42,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
-import androidx.webkit.WebViewFeature
 import com.aprax.htmlrun.AppViewModel
 import java.io.File
 
@@ -62,23 +62,15 @@ fun PreviewScreen(
     val entryPage = remember(viewModel.previewGeneration) { viewModel.entryPage }
     val backgroundColor = MaterialTheme.colorScheme.background.toArgb()
     val javaScriptEnabled = viewModel.settings.javaScriptEnabled
-    val assetLoaderEnabled = remember {
-        WebViewFeature.isFeatureSupported(WebViewFeature.WEBVIEW_ASSET_LOADER)
-    }
-
-    val assetLoader = remember(directory, assetLoaderEnabled) {
-        if (!assetLoaderEnabled) {
-            null
-        } else {
-            directory?.let {
-                WebViewAssetLoader.Builder()
-                    .setDomain(PREVIEW_HOST)
-                    .addPathHandler(
-                        "/project/",
-                        WebViewAssetLoader.InternalStoragePathHandler(context, it),
-                    )
-                    .build()
-            }
+    val assetLoader = remember(directory) {
+        directory?.let {
+            WebViewAssetLoader.Builder()
+                .setDomain(PREVIEW_HOST)
+                .addPathHandler(
+                    "/project/",
+                    WebViewAssetLoader.InternalStoragePathHandler(context, it),
+                )
+                .build()
         }
     }
 
@@ -87,7 +79,7 @@ fun PreviewScreen(
             setBackgroundColor(backgroundColor)
             settings.javaScriptEnabled = javaScriptEnabled
             settings.domStorageEnabled = javaScriptEnabled
-            settings.allowFileAccess = !assetLoaderEnabled
+            settings.allowFileAccess = assetLoader == null
             settings.allowContentAccess = false
             settings.useWideViewPort = false
             settings.loadWithOverviewMode = false

@@ -75,14 +75,14 @@ class ProjectRepository(context: Context) {
     }
 
     fun read(path: String): String {
-        val uri = uriFor(path) ?: return ""
+        val uri = uriForPath(path) ?: return ""
         return runCatching {
             resolver.openInputStream(uri)?.use { String(it.readBytes(), Charsets.UTF_8) } ?: ""
         }.getOrDefault("")
     }
 
     fun write(path: String, text: String): Boolean {
-        val uri = uriFor(path) ?: return false
+        val uri = uriForPath(path) ?: return false
         return runCatching {
             resolver.openOutputStream(uri, "wt")?.use { it.write(text.toByteArray(Charsets.UTF_8)) } != null
         }.getOrDefault(false)
@@ -117,7 +117,7 @@ class ProjectRepository(context: Context) {
     }
 
     fun deleteFile(path: String): Result<Unit> = runCatching {
-        val uri = uriFor(path) ?: error("Could not open $path")
+        val uri = uriForPath(path) ?: error("Could not open $path")
         if (!DocumentsContract.deleteDocument(resolver, uri)) error("Could not delete $path")
         refresh()
         Unit
@@ -130,7 +130,7 @@ class ProjectRepository(context: Context) {
         target.mkdirs()
         var copied = true
         for ((path, documentId) in index) {
-            val uri = uriFor(documentId) ?: continue
+            val uri = uriForDocument(documentId) ?: continue
             val destination = File(target, path)
             destination.parentFile?.mkdirs()
             val ok = runCatching {
@@ -169,13 +169,12 @@ class ProjectRepository(context: Context) {
         }
     }
 
-    private fun uriFor(path: String): Uri? {
-        val treeUri = rootUri ?: return null
+    private fun uriForPath(path: String): Uri? {
         val documentId = index[path] ?: return null
-        return runCatching { DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId) }.getOrNull()
+        return uriForDocument(documentId)
     }
 
-    private fun uriFor(documentId: String): Uri? {
+    private fun uriForDocument(documentId: String): Uri? {
         val treeUri = rootUri ?: return null
         return runCatching { DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId) }.getOrNull()
     }
