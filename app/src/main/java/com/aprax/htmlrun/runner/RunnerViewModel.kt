@@ -119,18 +119,18 @@ class RunnerViewModel(application: Application) : AndroidViewModel(application) 
         run()
     }
 
-    /** Replaces the whole project with the contents of a file chosen by the user. */
-    fun openProject(project: ProjectFile) {
-        html = project.html
-        css = project.css
-        js = project.js
+    /** Replaces the whole project with the contents of a folder chosen by the user. */
+    fun openProject(folder: ProjectFolder) {
+        html = folder.html
+        css = folder.css
+        js = folder.js
         editorValues = mapOf(
-            FileTab.HTML to TextFieldValue(project.html),
-            FileTab.CSS to TextFieldValue(project.css),
-            FileTab.JS to TextFieldValue(project.js),
+            FileTab.HTML to TextFieldValue(folder.html),
+            FileTab.CSS to TextFieldValue(folder.css),
+            FileTab.JS to TextFieldValue(folder.js),
         )
         run()
-        appendConsoleEntry("info", "Opened project file: ${project.name}")
+        appendConsoleEntry("info", "Opened project folder: ${folder.name}")
     }
 
     fun persist() {

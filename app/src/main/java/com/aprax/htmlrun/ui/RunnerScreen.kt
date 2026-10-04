@@ -1,6 +1,7 @@
 package com.aprax.htmlrun.ui
 
 import android.content.Intent
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -31,7 +32,9 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.rounded.FullscreenExit
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.OpenInFull
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.RestartAlt
@@ -67,7 +70,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aprax.htmlrun.editor.CodeEditor
 import com.aprax.htmlrun.runner.ConsoleEntry
 import com.aprax.htmlrun.runner.FileTab
-import com.aprax.htmlrun.runner.ProjectFiles
+import com.aprax.htmlrun.runner.ProjectFolders
 import com.aprax.htmlrun.runner.RunnerViewModel
 import kotlinx.coroutines.delay
 
@@ -83,6 +86,8 @@ private val InfoText = Color(0xFFA8C9FF)
 
 private enum class Pane { CODE, SPLIT, PREVIEW }
 
+private enum class FullScreen { NONE, EDITOR, PREVIEW }
+
 @Composable
 fun RunnerScreen(viewModel: RunnerViewModel = viewModel()) {
     val context = LocalContext.current
@@ -93,18 +98,19 @@ fun RunnerScreen(viewModel: RunnerViewModel = viewModel()) {
     var consoleVisible by rememberSaveable { mutableStateOf(true) }
     var menuOpen by remember { mutableStateOf(false) }
     var resetDialogVisible by remember { mutableStateOf(false) }
+    var fullScreen by rememberSaveable { mutableStateOf(FullScreen.NONE) }
 
     val openProjectLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
+        contract = ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
         if (uri != null) {
             consoleVisible = true
-            ProjectFiles.read(context, uri)
-                .onSuccess { project ->
-                    viewModel.openProject(project)
+            ProjectFolders.read(context, uri)
+                .onSuccess { folder ->
+                    viewModel.openProject(folder)
                 }
                 .onFailure { throwable ->
-                    viewModel.appendConsoleEntry("error", throwable.message ?: "Could not open the selected file")
+                    viewModel.appendConsoleEntry("error", throwable.message ?: "Could not open the selected folder")
                 }
         }
     }
@@ -122,6 +128,18 @@ fun RunnerScreen(viewModel: RunnerViewModel = viewModel()) {
     val showEditor = isWide || pane != Pane.PREVIEW
     val showPreview = isWide || pane != Pane.CODE
 
+    if (fullScreen != FullScreen.NONE) {
+        BackHandler { fullScreen = FullScreen.NONE }
+        FullScreenView(
+            mode = fullScreen,
+            viewModel = viewModel,
+            editorValue = editorValue,
+            onExit = { fullScreen = FullScreen.NONE },
+            onSwitch = { fullScreen = it },
+        )
+        return
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -133,6 +151,7 @@ fun RunnerScreen(viewModel: RunnerViewModel = viewModel()) {
             errorCount = viewModel.errorCount,
             onRun = viewModel::run,
             onToggleConsole = { consoleVisible = !consoleVisible },
+            onToggleFullScreen = { fullScreen = FullScreen.PREVIEW },
             onMenu = { menuOpen = true },
         )
 
@@ -190,7 +209,7 @@ fun RunnerScreen(viewModel: RunnerViewModel = viewModel()) {
             onToggleAutoRun = viewModel::toggleAutoRun,
             onOpenProject = {
                 menuOpen = false
-                openProjectLauncher.launch(ProjectFiles.mimeTypes)
+                openProjectLauncher.launch(null)
             },
             onExport = {
                 menuOpen = false
@@ -229,6 +248,7 @@ private fun TopBar(
     errorCount: Int,
     onRun: () -> Unit,
     onToggleConsole: () -> Unit,
+    onToggleFullScreen: () -> Unit,
     onMenu: () -> Unit,
 ) {
     Row(
@@ -290,12 +310,81 @@ private fun TopBar(
                 tint = if (errorCount > 0) ErrorText else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        IconButton(onClick = onToggleFullScreen) {
+            Icon(
+                imageVector = Icons.Rounded.OpenInFull,
+                contentDescription = "Preview full screen",
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        }
         IconButton(onClick = onMenu) {
             Icon(
                 imageVector = Icons.Rounded.MoreVert,
                 contentDescription = "More actions",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+    }
+}
+
+@Composable
+private fun FullScreenView(
+    mode: FullScreen,
+    viewModel: RunnerViewModel,
+    editorValue: TextFieldValue,
+    onExit: () -> Unit,
+    onSwitch: (FullScreen) -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(ScreenBackground)
+            .windowInsetsPadding(WindowInsets.safeDrawing),
+    ) {
+        if (mode == FullScreen.PREVIEW) {
+            PreviewPane(
+                document = viewModel.previewDocument,
+                onConsoleMessage = viewModel::appendFromBridge,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            CodeEditor(
+                value = editorValue,
+                onValueChange = viewModel::onEditorValueChange,
+                language = viewModel.languageOf(viewModel.activeTab),
+                onRunShortcut = viewModel::run,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            IconButton(onClick = { onSwitch(if (mode == FullScreen.PREVIEW) FullScreen.EDITOR else FullScreen.PREVIEW) }) {
+                Icon(
+                    imageVector = if (mode == FullScreen.PREVIEW) Icons.Rounded.Code else Icons.Rounded.Visibility,
+                    contentDescription = if (mode == FullScreen.PREVIEW) "Editor full screen" else "Preview full screen",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(PanelBackground)
+                        .padding(4.dp),
+                )
+            }
+            IconButton(onClick = onExit) {
+                Icon(
+                    imageVector = Icons.Rounded.FullscreenExit,
+                    contentDescription = "Exit full screen",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(PanelBackground)
+                        .padding(4.dp),
+                )
+            }
         }
     }
 }
@@ -532,7 +621,7 @@ private fun OverflowMenu(
                     )
                 },
             )
-            MenuRow(Icons.Rounded.FolderOpen, "Open project file", onOpenProject)
+            MenuRow(Icons.Rounded.FolderOpen, "Open project folder", onOpenProject)
             MenuRow(Icons.Rounded.Share, "Export HTML", onExport)
             MenuRow(Icons.Rounded.Delete, "Clear console", onClearConsole)
             MenuRow(Icons.Rounded.Delete, "Clear this file", onClearFile)
