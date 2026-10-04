@@ -1,6 +1,7 @@
 package com.aprax.htmlrun.editor
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,43 +42,52 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.aprax.htmlrun.data.AppSettings
+import com.aprax.htmlrun.data.EditorFont
 
-private val EditorBackground = Color(0xFF0F1115)
-private val GutterBackground = Color(0xFF11141B)
-private val GutterColor = Color(0xFF4A5468)
-private val PlainTextColor = Color(0xFFC8D1E0)
-private val CursorColor = Color(0xFF4F9DFF)
-
-private val EditorFontSize = 13.sp
-private val EditorLineHeight = 20.sp
+private const val MAX_HIGHLIGHTED_CHARS = 200_000
+private const val CHARACTER_WIDTH_RATIO = 0.62f
 private val FallbackLineHeight = 20.dp
 private val EditorTopPadding = 10.dp
 
 /**
- * Multi line code editor with a line number gutter and syntax highlighting.
- * Long lines soft wrap, and the gutter follows the measured height of every logical
- * line so the numbers stay aligned with the text.
+ * Multi line code editor with an optional line number gutter, syntax highlighting and
+ * automatic indentation. Word wrap is optional, the horizontal scroll keeps long lines
+ * readable when wrapping is turned off.
  */
 @Composable
 fun CodeEditor(
     value: TextFieldValue,
     onValueChange: (TextFieldValue) -> Unit,
     language: Language,
+    settings: AppSettings,
     modifier: Modifier = Modifier,
+    searchQuery: String = "",
+    onUndo: () -> Unit = {},
+    onRedo: () -> Unit = {},
     onRunShortcut: () -> Unit = {},
 ) {
     val verticalScroll = rememberScrollState()
+    val horizontalScroll = rememberScrollState()
     val density = LocalDensity.current
+
+    val lineHeight = (settings.fontSizeSp + 6).sp
+    val fontFamily = remember(settings.editorFont) { settings.editorFont.fontFamily() }
 
     var lineHeights by remember { mutableStateOf(emptyList<Float>()) }
     var textLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
     var viewportHeight by remember { mutableStateOf(0) }
 
-    val logicalLines = value.text.count { it == '\n' } + 1
+    val logicalLines = remember(value.text) { value.text.count { it == '\n' } + 1 }
+    val dark = MaterialTheme.colorScheme.background.luminanceIsDark()
+    val longestLine = remember(value.text) {
+        value.text.lineSequence().maxOfOrNull { it.length } ?: 0
+    }
 
-    LaunchedEffect(textLayout, value.selection) {
+    LaunchedEffect(textLayout, value.selection, logicalLines) {
         val layout = textLayout ?: return@LaunchedEffect
         val cursor = value.selection.start.coerceIn(0, layout.layoutInput.text.length)
         val rect = layout.getCursorRect(cursor)
@@ -84,52 +95,64 @@ fun CodeEditor(
         if (rect.top < verticalScroll.value) {
             verticalScroll.scrollTo(rect.top.toInt())
         } else if (rect.bottom > verticalScroll.value + viewport) {
-            verticalScroll.scrollTo((rect.bottom - viewport).toInt())
+            verticalScroll.scrollTo((rect.bottom - viewport).coerceAtLeast(0f).toInt())
         }
     }
 
     Box(
         modifier = modifier
-            .background(EditorBackground)
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(verticalScroll)
             .onSizeChanged { viewportHeight = it.height }
     ) {
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Column(
-                modifier = Modifier
-                    .width(46.dp)
-                    .background(GutterBackground)
-                    .padding(vertical = EditorTopPadding)
-            ) {
-                for (index in 0 until logicalLines) {
-                    val height = lineHeights.getOrNull(index)
-                        ?.let { with(density) { it.toDp() } }
-                        ?: FallbackLineHeight
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(height),
-                        contentAlignment = Alignment.TopEnd
-                    ) {
-                        Text(
-                            text = (index + 1).toString(),
-                            color = GutterColor,
-                            fontSize = EditorFontSize,
-                            lineHeight = EditorLineHeight,
-                            fontFamily = FontFamily.Monospace,
-                            textAlign = TextAlign.End,
-                            modifier = Modifier.padding(end = 8.dp)
-                        )
+        Row(
+            modifier = Modifier
+                .then(if (settings.wordWrap) Modifier.fillMaxWidth() else Modifier.horizontalScroll(horizontalScroll))
+                .then(
+                    if (settings.wordWrap) {
+                        Modifier.fillMaxWidth()
+                    } else {
+                        Modifier.width(contentWidth(longestLine, settings.fontSizeSp, settings.showLineNumbers))
+                    }
+                )
+        ) {
+            if (settings.showLineNumbers) {
+                Column(
+                    modifier = Modifier
+                        .width(52.dp)
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(vertical = EditorTopPadding)
+                ) {
+                    for (index in 0 until logicalLines) {
+                        val height = lineHeights.getOrNull(index)
+                            ?.let { with(density) { it.toDp() } }
+                            ?: with(density) { lineHeight.toDp() }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(height),
+                            contentAlignment = Alignment.TopEnd,
+                        ) {
+                            Text(
+                                text = (index + 1).toString(),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = (settings.fontSizeSp - 2).sp,
+                                lineHeight = lineHeight,
+                                fontFamily = FontFamily.Monospace,
+                                textAlign = TextAlign.End,
+                                modifier = Modifier.padding(end = 10.dp),
+                            )
+                        }
                     }
                 }
             }
 
             BasicTextField(
                 value = value,
-                onValueChange = { onValueChange(applyIndent(it)) },
+                onValueChange = { onValueChange(applyIndent(it, settings.indentSize)) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 10.dp, top = EditorTopPadding, end = 12.dp, bottom = EditorTopPadding)
+                    .padding(start = 12.dp, top = EditorTopPadding, end = 14.dp, bottom = EditorTopPadding)
                     .onPreviewKeyEvent { event ->
                         val control = event.isCtrlPressed || event.isMetaPressed
                         when {
@@ -138,13 +161,23 @@ fun CodeEditor(
                                 true
                             }
 
+                            control && event.key == Key.Z && !event.isShiftPressed -> {
+                                onUndo()
+                                true
+                            }
+
+                            control && (event.key == Key.Z || event.key == Key.Y) -> {
+                                onRedo()
+                                true
+                            }
+
                             event.key == Key.Tab -> {
-                                onValueChange(indentSelection(value, shift = event.isShiftPressed))
+                                onValueChange(indentSelection(value, event.isShiftPressed, settings.indentSize))
                                 true
                             }
 
                             event.key == Key.Backspace -> {
-                                val next = removeTrailingIndent(value)
+                                val next = removeTrailingIndent(value, settings.indentSize)
                                 if (next.text != value.text) {
                                     onValueChange(next)
                                     true
@@ -157,24 +190,50 @@ fun CodeEditor(
                         }
                     },
                 textStyle = TextStyle(
-                    color = PlainTextColor,
-                    fontSize = EditorFontSize,
-                    lineHeight = EditorLineHeight,
-                    fontFamily = FontFamily.Monospace
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = settings.fontSizeSp.sp,
+                    lineHeight = lineHeight,
+                    fontFamily = fontFamily,
                 ),
-                cursorBrush = SolidColor(CursorColor),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 keyboardOptions = KeyboardOptions.Default,
                 visualTransformation = VisualTransformation { annotated ->
-                    TransformedText(SyntaxHighlighter.highlight(annotated.text, language), OffsetMapping.Identity)
+                    val source = annotated.text
+                    val styled = if (source.length <= MAX_HIGHLIGHTED_CHARS) {
+                        SyntaxHighlighter.highlight(
+                            text = source,
+                            language = language,
+                            dark = dark,
+                            search = searchQuery,
+                        )
+                    } else {
+                        SyntaxHighlighter.highlight(source, Language.PLAIN, dark, searchQuery)
+                    }
+                    TransformedText(styled, OffsetMapping.Identity)
                 },
                 onTextLayout = { layout ->
                     textLayout = layout
                     lineHeights = layout.logicalLineHeights(value.text)
-                }
+                },
             )
         }
     }
 }
+
+private val MinimumContentWidth = 280.dp
+
+private fun contentWidth(longestLine: Int, fontSizeSp: Int, gutter: Boolean): Dp {
+    val textWidth = (longestLine.coerceAtMost(600) * CHARACTER_WIDTH_RATIO * fontSizeSp).dp
+    return (textWidth + if (gutter) 90.dp else 40.dp).coerceAtLeast(MinimumContentWidth)
+}
+
+private fun EditorFont.fontFamily(): FontFamily = when (this) {
+    EditorFont.MONOSPACE -> FontFamily.Monospace
+    EditorFont.SANS -> FontFamily.SansSerif
+    EditorFont.SERIF -> FontFamily.Serif
+}
+
+private fun Color.luminanceIsDark(): Boolean = (red * 0.299f + green * 0.587f + blue * 0.114f) < 0.5f
 
 /** Height in pixels of every logical line, soft wrapped rows included. */
 private fun TextLayoutResult.logicalLineHeights(source: String): List<Float> {
@@ -199,7 +258,7 @@ private fun TextLayoutResult.logicalLineHeights(source: String): List<Float> {
 }
 
 /** Keeps the indentation of the previous line when Enter is pressed. */
-private fun applyIndent(new: TextFieldValue): TextFieldValue {
+private fun applyIndent(new: TextFieldValue, indentSize: Int): TextFieldValue {
     val selection = new.selection
     if (new.composition != null) return new
     if (!selection.collapsed) return new
@@ -212,12 +271,12 @@ private fun applyIndent(new: TextFieldValue): TextFieldValue {
     val opens = opensBlock(previousLine)
     if (indent.isEmpty() && !opens) return new
 
-    val addition = indent + if (opens) "  " else ""
+    val addition = indent + if (opens) " ".repeat(indentSize.coerceIn(2, 8)) else ""
     val caret = cursor + addition.length
     return new.copy(
         text = new.text.substring(0, cursor) + addition + new.text.substring(cursor),
         selection = TextRange(caret),
-        composition = null
+        composition = null,
     )
 }
 
@@ -229,24 +288,28 @@ private fun opensBlock(line: String): Boolean {
         trimmed.endsWith("(")
 }
 
-private fun indentSelection(value: TextFieldValue, shift: Boolean): TextFieldValue {
+private fun indentSelection(value: TextFieldValue, shift: Boolean, indentSize: Int): TextFieldValue {
     val text = value.text
+    val unit = " ".repeat(indentSize.coerceIn(2, 8))
     val blockStart = text.lastIndexOf('\n', value.selection.min - 1).let { if (it < 0) 0 else it + 1 }
     val blockEnd = value.selection.max
     val block = text.substring(blockStart, blockEnd)
-    val pattern = if (shift) Regex("^[ ]{1,2}", RegexOption.MULTILINE) else Regex("^", RegexOption.MULTILINE)
-    val updated = block.replace(pattern, if (shift) "" else "  ")
+    val pattern = if (shift) Regex("^[ \\t]{1,$indentSize}", RegexOption.MULTILINE) else Regex("^", RegexOption.MULTILINE)
+    val updated = block.replace(pattern, if (shift) "" else unit)
     val result = text.substring(0, blockStart) + updated + text.substring(blockEnd)
     val delta = updated.length - block.length
     val selection = if (shift || value.selection.collapsed) {
-        TextRange(blockStart + (updated.length - block.length.coerceAtMost(0)), blockStart + updated.length)
+        TextRange(blockStart, blockStart + updated.length)
     } else {
-        TextRange(value.selection.min + delta, value.selection.max + delta)
+        TextRange(
+            (value.selection.min + delta).coerceAtLeast(blockStart),
+            (value.selection.max + delta).coerceAtLeast(blockStart),
+        )
     }
     return value.copy(text = result, selection = selection, composition = null)
 }
 
-private fun removeTrailingIndent(value: TextFieldValue): TextFieldValue {
+private fun removeTrailingIndent(value: TextFieldValue, indentSize: Int): TextFieldValue {
     val selection = value.selection
     if (!selection.collapsed) return value
     val cursor = selection.start
@@ -255,10 +318,10 @@ private fun removeTrailingIndent(value: TextFieldValue): TextFieldValue {
     val lineStart = text.lastIndexOf('\n', cursor - 1).let { if (it < 0) 0 else it + 1 }
     val before = text.substring(lineStart, cursor)
     if (before.isEmpty() || before.any { it != ' ' && it != '\t' }) return value
-    val keep = (before.length - 2).coerceAtLeast(0)
+    val keep = (before.length - indentSize.coerceIn(2, 8)).coerceAtLeast(0)
     return value.copy(
         text = text.substring(0, lineStart) + before.substring(0, keep) + text.substring(cursor),
         selection = TextRange(lineStart + keep),
-        composition = null
+        composition = null,
     )
 }

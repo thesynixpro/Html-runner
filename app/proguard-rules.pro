@@ -1,5 +1,2 @@
-# Keep the JavaScript bridge used by the preview WebView.
--keepclassmembers class com.aprax.htmlrun.runner.JsBridge {
-    public *;
-}
+# The app has no reflection based entry points, the default Android rules are enough.
 -keepattributes JavascriptInterface
