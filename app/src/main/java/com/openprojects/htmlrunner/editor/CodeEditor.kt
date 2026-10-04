@@ -29,13 +29,14 @@ import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.input.TextRange
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
@@ -71,6 +72,7 @@ fun CodeEditor(
 
     var lineHeights by remember { mutableStateOf(emptyList<Float>()) }
     var textLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
+    var viewportHeight by remember { mutableStateOf(0) }
 
     val logicalLines = value.text.count { it == '\n' } + 1
 
@@ -78,11 +80,11 @@ fun CodeEditor(
         val layout = textLayout ?: return@LaunchedEffect
         val cursor = value.selection.start.coerceIn(0, layout.layoutInput.text.length)
         val rect = layout.getCursorRect(cursor)
-        val viewport = verticalScroll.viewportSize.height
+        val viewport = viewportHeight.toFloat()
         if (rect.top < verticalScroll.value) {
-            verticalScroll.scrollTo(rect.top)
+            verticalScroll.scrollTo(rect.top.toInt())
         } else if (rect.bottom > verticalScroll.value + viewport) {
-            verticalScroll.scrollTo(rect.bottom - viewport)
+            verticalScroll.scrollTo((rect.bottom - viewport).toInt())
         }
     }
 
@@ -90,6 +92,7 @@ fun CodeEditor(
         modifier = modifier
             .background(EditorBackground)
             .verticalScroll(verticalScroll)
+            .onSizeChanged { viewportHeight = it.height }
     ) {
         Row(modifier = Modifier.fillMaxWidth()) {
             Column(
